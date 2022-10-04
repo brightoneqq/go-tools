@@ -2,8 +2,8 @@ package kafka
 
 import (
 	"github.com/Shopify/sarama"
-	"github.com/brightoneqq/go-tools/flow"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -17,37 +17,42 @@ type Channel struct {
 	Url   []string
 	Topic string
 }
-
-var CoreChannel = &Channel{}
-
-func SendMessage(channel *Channel, key string, message string) error {
-	//fmt.Println(message)
-	return flow.Retry(3, 10, func() error {
-		return SimpleSendMessage(channel, key, message)
-	})
+type Client struct {
+	Url    []string
+	config *sarama.Config
 }
 
-func SimpleSendMessage(channel *Channel, key string, message string) error {
-	config := sarama.NewConfig()
-	config.Producer.RequiredAcks = sarama.WaitForLocal
-	config.Producer.Partitioner = sarama.NewRandomPartitioner
-	config.Producer.Return.Successes = true
+func NewClient(bootstrapServers string, config *sarama.Config) *Client {
+	client := &Client{}
+	client.Url = strings.Split(bootstrapServers, ",")
+	if config != nil {
+		client.config = config
+	} else {
+		defaultConfig := sarama.NewConfig()
+		defaultConfig.Producer.RequiredAcks = sarama.WaitForLocal
+		defaultConfig.Producer.Partitioner = sarama.NewRandomPartitioner
+		defaultConfig.Producer.Return.Successes = true
+		client.config = defaultConfig
+	}
+	return client
+}
+
+func (client *Client) SendMessage(topic, key, message string) error {
 
 	msg := &sarama.ProducerMessage{}
-	msg.Topic = channel.Topic
+	msg.Topic = topic
 	msg.Key = sarama.StringEncoder(key)
 	msg.Timestamp = time.Now()
 	msg.Value = sarama.ByteEncoder(message)
 
-	client, err := sarama.NewSyncProducer(channel.Url, config)
+	producer, err := sarama.NewSyncProducer(client.Url, client.config)
 	if err != nil {
-		log.Println("FAILED TO INIT KAFKA CLIENT:", err)
-		//todo: call http for this fail
+		log.Println("FAILED TO INIT KAFKA PRODUCER:", err)
 		return err
 	}
-	defer client.Close()
+	defer producer.Close()
 
-	_, _, err = client.SendMessage(msg)
+	_, _, err = producer.SendMessage(msg)
 	if err != nil {
 		log.Println("FAILED TO SEND KAFKA MSG,", err)
 		return err
