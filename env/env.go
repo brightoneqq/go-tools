@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func getEnvMap() map[string]string {
+func GetEnvMap() map[string]string {
 	getEnv := func(data []string,
 		getKV func(item string) (key, val string)) map[string]string {
 

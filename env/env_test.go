@@ -6,7 +6,7 @@ import (
 )
 
 func TestEnvMap(t *testing.T) {
-	envMap := getEnvMap()
+	envMap := GetEnvMap()
 	for k, v := range envMap {
 		fmt.Println(k, " -> ", v)
 	}
